@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+
+<script id="vertex-shader" type="x-shader/x-vertex">#version 300 es
+	in vec4 vPosition;
+	in vec3 vNormal;
+	in vec2 vTexCoord;
+	in vec4 vColor ;
+
+	uniform mat4 modelViewMatrix;
+	uniform mat4 normalMatrix;
+	uniform mat4 projectionMatrix;
+	uniform vec4 lightPosition;
+
+	out vec3 fPos ; // vertex position in eye coords
+	out vec3 fLpos ; // light position in eye coords
+	out vec3 fN ; // vertex normal in eye coords
+	out vec2 fTexCoord;
+
+void main() {
+	// Transform vertex position into eye coordinates
+	fPos = (modelViewMatrix * vPosition).xyz;
+
+	//transform normal in eye coordinates
+	fN = normalize( (normalMatrix*vec4(vNormal,0.0)).xyz);
+	// pass through light position
+	fLpos = lightPosition.xyz ;
+
+	// Transform vertex position in clip coordinates
+	gl_Position = projectionMatrix * modelViewMatrix * vPosition; 
+	
+	fTexCoord = vTexCoord;
+}
+
+
+
+</script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">#version 300 es
+precision mediump float;
+
+
+in vec2 fTexCoord;
+//out vec4 fColor;
+//
+
+
+uniform sampler2D texture1;
+uniform sampler2D texture2;
+uniform int useTextures;
+uniform vec4 ambientProduct, diffuseProduct, specularProduct;
+uniform float shininess;
+uniform float blend;
+
+in vec3 fPos ;
+in vec3 fLpos ;
+in vec3 fN ;
+
+layout (location = 0) out vec4 fragColor ;
+
+void main() {
+	//normalised vector pointing from vector to light source
+	vec3 L = normalize(fLpos - fPos) ;
+	//direction of vertex to camera
+	vec3 V = normalize(-fPos) ; // why?
+	//refection of light
+	vec3 R = reflect(-L, fN) ;
+	//half vector between L and V
+	vec3 halfDir = normalize(L + V);
+	//dot product of normal vector and light direction
+	float NormalDotL = max(0.0, dot( fN, L ));
+	// Compute terms in the illumination equation
+	float lightDotNormal = max( dot(L, fN), 0.0 );
+	vec4 diffuse = vec4(0.0, 0.0, 0.0, 1.0);
+	diffuse = diffuseProduct * lightDotNormal;
+
+	float reflectedDotViewShiny = pow( max(dot(R, V), 0.0), shininess );
+	vec4 specular = vec4(0.0, 0.0, 0.0, 1.0);
+	
+	//specular reflection..
+	//https://learnopengl.com/Advanced-Lighting/Advanced-Lighting
+	float specs = pow(max(dot(halfDir, fN), 0.0), shininess);
+	
+	//color for specular reflection
+	//specular = specularProduct * reflectedDotViewShiny;
+	specular = specularProduct * specs * reflectedDotViewShiny;
+
+	//reflects the light from the opposite direction
+	if( dot(L, fN) < 0.0 ) {
+		specular = vec4(0.0, 0.0, 0.0, 1.0);
+	}
+	
+	
+	//blinn phong effect
+	vec4 color = NormalDotL * ambientProduct + diffuse + specular;
+	color.a = 1.0 ;
+	//0: single texture 2: double texture with transition else: color
+	if( useTextures == 0)
+    {
+		fragColor = texture( texture1, fTexCoord );
+	}
+	else if ( useTextures == 2) {
+		vec4 c1 = texture( texture1, fTexCoord );
+		vec4 c2 = texture( texture2, fTexCoord );
+		fragColor = mix(c1, c2, blend);
+	}
+	else
+	{
+		fragColor = color;
+	}
+}
+</script>
+
+<script type="text/javascript" src="Common/webgl-utils.js"></script>
+<script type="text/javascript" src="Common/initShaders.js"></script>
+
+<script type="text/javascript" src="Common/MV.js"></script>
+<script type="text/javascript" src="objects.js"></script>
+<script type="text/javascript" src="main.js"></script>
+
+
+<body>
+<canvas id="gl-canvas" width="512" height="512">
+Oops ... your browser doesn't support the HTML5 canvas element
+</canvas>
+
+<br/>
+<br/>
+
+<div id="Fps"></div><br/>
+
+<div id="animToggleButton">
+    <input id="animToggleButton" type="button" value="Toggle Animation"
+    />
+
+</div><br/>
+
+</div><br/>
+
+<!-- <div id="textureToggleButton">
+    <input id="textureToggleButtoni" type="button" value="Toggle Textures"
+    /> -->
+
+</body>
+</html>
