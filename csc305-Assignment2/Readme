@@ -1,1 +1,9 @@
-Nothing yet
+Open terminal
+cd into directory
+run python -m http.server 8080
+open browser
+type localhost:8080
+
+from page
+click main.html
+toggle animation to start
